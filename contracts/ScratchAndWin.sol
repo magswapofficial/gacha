@@ -116,6 +116,7 @@ contract ScratchAndWin is Context, Ownable {
     }
     
     function prevalidatePurchase() internal view{
+        require(isActive, "Not Active yet");
         require(token.balanceOf(msg.sender) >= ticketPrice, "Insufficient balance");
         require(token.balanceOf(address(this)) >= (prizes[prizes.length - 1] * 10**9), "No sufficientbalance in contract");
     }
