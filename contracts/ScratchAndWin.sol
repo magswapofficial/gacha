@@ -91,9 +91,9 @@ contract ScratchAndWin is Context, Ownable {
     event TokenUpdated(address newToken);
     event TicketResult(uint256 result);
 
-   // constructor(IERC20 tokenAddress){
-    //    token = tokenAddress;
-   // }
+    constructor(IERC20 tokenAddress){
+        token = tokenAddress;
+    }
 
           ////////////////////
          // Core Functions //
@@ -114,37 +114,27 @@ contract ScratchAndWin is Context, Ownable {
         );
         return (seed % (to - from) + from);
     }
-
-    function testRandom(uint256 salty) public returns(uint256){
-        uint256 random = getRandom(0, 999, salty);
-        uint256 result;
-        for(uint256 i = 0; i < prizes.length; i++){
-            if(random <= weights[i]) {
-              result = prizes[i];
-              emit TicketResult(result);
-              return result;
-            }
-            random -= weights[i];
-        }
-        result = prizes[0];
-        emit TicketResult(result);
-        return result;
+    
+    function prevalidatePurchase() internal view{
+        require(token.balanceOf(msg.sender) >= ticketPrice, "Insufficient balance");
+        require(token.balanceOf(address(this)) >= (prizes[prizes.length - 1] * 10**9), "No sufficientbalance in contract");
     }
 
-
     function buyTicket(uint256 salty) public returns(uint256){
-        require(token.balanceOf(msg.sender) >= ticketPrice, "Insufficient balance");
+        prevalidatePurchase();
         token.transferFrom(msg.sender, address(this), ticketPrice);
         totTicketsBought++;
-        uint256 random = getRandom(0, 9999, salty);
+        uint256 random = getRandom(0, 999, salty);
         for(uint256 i = 0; i < prizes.length; i++){
             if(random < weights[i]){
                 if(prizes[i] != prizes[0]) numWinningTickets++;
                 token.transfer(msg.sender, prizes[i] * 10**9);
+                emit TicketResult(prizes[i]);
                 return prizes[i];
             }
             random -= weights[i];
         }
+        emit TicketResult(prizes[0]);
         return prizes[0];
     }
 
@@ -173,6 +163,10 @@ contract ScratchAndWin is Context, Ownable {
        require(newToken != address(0), "Dead address is not valid");
        token = IERC20(newToken);
        emit TokenUpdated(newToken);
+   }
+   
+   function rescueTokens(address tokenAddress, uint256 amount) external onlyOwner{
+       IERC20(tokenAddress).transfer(msg.sender, amount);
    }
 
 }
