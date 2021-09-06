@@ -65,6 +65,9 @@ abstract contract Ownable is Context {
     }
 }
 
+/// @title Scratch & Win
+/// @author FreezyEx (https://github.com/FreezyEx)
+/// @notice A smart contract that allows to play scratch & win game.
 contract ScratchAndWin is Context, Ownable {
 
     IERC20 token;
@@ -98,7 +101,11 @@ contract ScratchAndWin is Context, Ownable {
           ////////////////////
          // Core Functions //
         ////////////////////
-
+    
+    /// @notice Generate a random number between "from" and "to"
+    /// @param from The lowest number of the interval
+    /// @param to The biggest number of the interval
+    /// @param salty A random number generated off-chain
     function getRandom(uint256 from, uint256 to, uint256 salty) private view returns (uint256) {
         uint256 seed = uint256(
             keccak256(
@@ -115,12 +122,18 @@ contract ScratchAndWin is Context, Ownable {
         return (seed % (to - from) + from);
     }
     
+    /// @notice Check if the contract has enough tokens to pay 
+    ///     the highest rewards.
+    ///     The msg.sender token balance must be >= ticketPrice.
     function prevalidatePurchase() internal view{
         require(isActive, "Not Active yet");
         require(token.balanceOf(msg.sender) >= ticketPrice, "Insufficient balance");
         require(token.balanceOf(address(this)) >= (prizes[prizes.length - 1] * 10**9), "No sufficientbalance in contract");
     }
-
+   
+    /// @param salty A random amount 
+    /// @notice Takes the tokens from the user and calculate the prize
+    /// @dev Use a script to pass the "salty" parameter.
     function buyTicket(uint256 salty) public returns(uint256){
         prevalidatePurchase();
         token.transferFrom(msg.sender, address(this), ticketPrice);
@@ -142,32 +155,43 @@ contract ScratchAndWin is Context, Ownable {
          //////////////////////
         // Update Functions //
        //////////////////////
-
-   function updatePrizesAndWeights(uint256[] memory newPrizes, uint256[] memory newWeights) external onlyOwner{
+       
+    /// @notice Updates the weights[] and prizes[] arrays
+    /// @dev "newPrizes[]" and "newWeights[]" must have same size
+    function updatePrizesAndWeights(uint256[] memory newPrizes, uint256[] memory newWeights) external onlyOwner{
        prizes = newPrizes;
        weights = newWeights;
        emit PrizesAndWeightsUpdated(newPrizes, newWeights);
-   }
-
-   function updateTicketPrice(uint256 newPrice) external onlyOwner{
+    }
+    
+    /// @notice Updates the ticket price
+    /// @dev Decimals are alredy added by the function
+    function updateTicketPrice(uint256 newPrice) external onlyOwner{
        ticketPrice = newPrice;
        emit TicketPriceUpdated(newPrice);
-   }
-
-   function updateIsActive(bool _enabled) external onlyOwner{
+    }
+    
+    /// @notice Updates "isActive" flag
+    /// @dev If _enabled = true ----> game is active
+    ///     If _enabled = false ----> game not active
+    function updateIsActive(bool _enabled) external onlyOwner{
        require(isActive != _enabled, "You can't set the same flag");
        isActive = _enabled;
        emit IsActiveUpdated(_enabled);
-   }
-
-   function updateToken(address newToken) external onlyOwner{
+    }
+    
+    /// @notice Updates token address
+    /// @dev Token address must be valid
+    function updateToken(address newToken) external onlyOwner{
        require(newToken != address(0), "Dead address is not valid");
        token = IERC20(newToken);
        emit TokenUpdated(newToken);
-   }
-   
-   function rescueTokens(address tokenAddress, uint256 amount) external onlyOwner{
+    }
+    
+    /// @notice Withdraws tokens sent by mistake
+    /// @dev "isActive" must be false to call this
+    function rescueTokens(address tokenAddress, uint256 amount) external onlyOwner{
        IERC20(tokenAddress).transfer(msg.sender, amount);
-   }
+    }
 
 }
